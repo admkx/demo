@@ -1,108 +1,124 @@
-// Initialize an empty array to hold the data from the API
-let data = [];
-
-// Fetch data from the API and initialize the filters
-async function fetchData() {
+// Fetch data from the API and initialize the application
+async function initializeApp() {
   try {
-    // Show the loading message
-    document.getElementById('loading').style.display = 'block';
-    
-    // Fetch data from the provided URL
-    const response = await fetch('https://dujour.squiz.cloud/developer-challenge/data', { method: 'GET' });
-    // Convert the response to JSON format and store it in the data array
-    data = await response.json();
-    
-    // Hide the loading message
-    document.getElementById('loading').style.display = 'none';
-    
-    // Call the function to initialize the filters with the fetched data
-    initializeFilters();
-    // Call the function to apply the filters and display the data
+    showLoading(true);
+    const fetchedData = await fetchDataWithRetry('https://dujour.squiz.cloud/developer-challenge/data');
+    data = fetchedData;
+    showLoading(false);
+    populateFilters();
     applyFilters();
   } catch (error) {
-    // Log any errors that occur during the fetch process
-    console.error('Error fetching data:', error);
+    console.error('Error initializing the application:', error);
   }
 }
 
-// Initialize the country and industry filters with unique values from the data
-function initializeFilters() {
-  // Get references to the country and industry select elements in the HTML
-  const countrySelect = document.getElementById('country');
-  const industrySelect = document.getElementById('industry');
+// Fetch data with retry logic
+async function fetchDataWithRetry(url, retries = 3, timeout = 5000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const controller = new AbortController();
+      const signal = controller.signal;
+      const fetchPromise = fetch(url, { method: 'GET', signal });
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      const response = await fetchPromise;
+      clearTimeout(timeoutId);
 
-  // Create an object to count the number of occurrences of each country
-  const countryCount = data.reduce((acc, item) => {
-    acc[item.country] = (acc[item.country] || 0) + 1;
-    return acc;
-  }, {});
-
-  // Create an object to count the number of occurrences of each industry
-  const industryCount = data.reduce((acc, item) => {
-    acc[item.industry] = (acc[item.industry] || 0) + 1;
-    return acc;
-  }, {});
-
-  // Get the unique country values and sort them alphabetically
-  const countries = Object.keys(countryCount).sort();
-  // Get the unique industry values and sort them alphabetically
-  const industries = Object.keys(industryCount).sort();
-
-  // Add each unique country as an option in the country select element, along with the count
-  countries.forEach(country => {
-    const option = document.createElement('option');
-    option.value = country;
-    option.text = `${country} (${countryCount[country]})`;
-    countrySelect.appendChild(option);
-  });
-
-  // Add each unique industry as an option in the industry select element, along with the count
-  industries.forEach(industry => {
-    const option = document.createElement('option');
-    option.value = industry;
-    option.text = `${industry} (${industryCount[industry]})`;
-    industrySelect.appendChild(option);
-  });
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return await response.json();
+    } catch (error) {
+      if (i === retries - 1) throw error;
+    }
+  }
 }
 
-// Apply filters and sort to the data and update the display
+// Show or hide loading message
+function showLoading(isLoading) {
+  document.getElementById('loading').style.display = isLoading ? 'block' : 'none';
+}
+
+// Populate the country and industry filters
+function populateFilters() {
+  const countryCounts = getCounts(data, 'country');
+  const industryCounts = getCounts(data, 'industry');
+  
+  populateSelectElement(document.getElementById('country'), countryCounts);
+  populateSelectElement(document.getElementById('industry'), industryCounts);
+}
+
+// Get unique values and their counts from an array of objects by a specified key
+function getCounts(array, key) {
+  return array.reduce((acc, item) => {
+    acc[item[key]] = (acc[item[key]] || 0) + 1;
+    return acc;
+  }, {});
+}
+
+// Populate a select element with options
+function populateSelectElement(selectElement, counts) {
+  const fragment = document.createDocumentFragment();
+  Object.entries(counts).sort().forEach(([value, count]) => {
+    const option = document.createElement('option');
+    option.value = sanitizeInput(value);
+    option.textContent = `${sanitizeInput(value)} (${count})`;
+    fragment.appendChild(option);
+  });
+  selectElement.appendChild(fragment);
+}
+
+// Apply filters and sorting, then update the display
 function applyFilters() {
-  // Get the selected values from the country and industry select elements
-  const country = document.getElementById('country').value.toLowerCase();
-  const industry = document.getElementById('industry').value.toLowerCase();
-  const order = document.querySelector('input[name="order"]:checked').value;
-  const sort = document.querySelector('input[name="sort"]:checked').value;
+  const filteredData = getFilteredData(data);
+  const sortedData = getSortedData(filteredData);
+  displayResults(sortedData);
+}
 
-  // Filter the data based on the selected country and industry values
-  let filteredData = data.filter(item =>
-    // Check if the country filter is empty or matches the item's country
-    (!country || item.country.toLowerCase() === country) &&
-    // Check if the industry filter is empty or matches the item's industry
-    (!industry || item.industry.toLowerCase() === industry)
-    );
+// Get filtered data based on selected filters
+function getFilteredData(data) {
+  const country = sanitizeInput(document.getElementById('country').value).toLowerCase();
+  const industry = sanitizeInput(document.getElementById('industry').value).toLowerCase();
 
-  // Sort the filtered data based on the selected sort option and order
-  filteredData.sort((a, b) => {
-    // If sorting by name, compare the names alphabetically
+  return data.filter(item =>
+    (!country || sanitizeInput(item.country).toLowerCase() === country) &&
+    (!industry || sanitizeInput(item.industry).toLowerCase() === industry)
+  );
+}
+
+// Get sorted data based on selected sorting options
+function getSortedData(data) {
+  const order = sanitizeInput(document.querySelector('input[name="order"]:checked').value);
+  const sort = sanitizeInput(document.querySelector('input[name="sort"]:checked').value);
+
+  return data.sort((a, b) => {
     if (sort === 'name') {
-      return order === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
-    // If sorting by number of employees, compare the numbers
+      return order === 'asc' ? sanitizeInput(a.name).localeCompare(sanitizeInput(b.name)) : sanitizeInput(b.name).localeCompare(sanitizeInput(a.name));
     } else {
       return order === 'asc' ? a.numberOfEmployees - b.numberOfEmployees : b.numberOfEmployees - a.numberOfEmployees;
     }
   });
-
-  // Display the filtered and sorted data in the HTML
-  displayResults(filteredData);
 }
 
 // Display the results in the HTML
 function displayResults(data) {
-  // Get the reference to the results list element in the HTML
   const results = document.getElementById('results');
-  // Create the list items for each data entry and join them into a single string
-  results.innerHTML = data.map(item => `<li class="py-2">${item.name} · ${item.country} · ${item.industry} · ${item.numberOfEmployees}</li>`).join('');
+  const fragment = document.createDocumentFragment();
+  data.forEach(item => {
+    const li = document.createElement('li');
+    li.className = 'py-2';
+    li.textContent = `${sanitizeInput(item.name)} · ${sanitizeInput(item.country)} · ${sanitizeInput(item.industry)} · ${item.numberOfEmployees}`;
+    fragment.appendChild(li);
+  });
+  results.innerHTML = '';
+  results.appendChild(fragment);
 }
 
-// Fetch data when the page loads
-window.onload = fetchData;
+// Sanitize input to prevent XSS attacks
+function sanitizeInput(input) {
+  const element = document.createElement('div');
+  element.textContent = input;
+  return element.innerHTML;
+}
+
+// Initialize the application when the page loads
+window.onload = initializeApp;
