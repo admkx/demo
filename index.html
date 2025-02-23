@@ -17,13 +17,13 @@
           <h2 class="mt-5 mb-4">Filter</h2>
           <div class="form-group">
             <label for="country" class="col-form-label">Country</label>
-            <select id="country" class="form-select" aria-label="Country filter" onchange="applyFilters()">
+            <select id="country" class="form-select" aria-label="Country filter">
               <option value="">All</option>
             </select>
           </div>
           <div class="form-group mt-3">
             <label for="industry" class="col-form-label">Industry</label>
-            <select id="industry" class="form-select" aria-label="Industry filter" onchange="applyFilters()">
+            <select id="industry" class="form-select" aria-label="Industry filter">
               <option value="">All</option>
             </select>
           </div>
@@ -31,18 +31,18 @@
           <fieldset class="form-group">
             <legend class="col-form-label">By</legend>
             <div class="btn-group" role="group" aria-label="Sort by">
-              <input type="radio" class="btn-check" id="btn-sort-name" name="sort" value="name" onchange="applyFilters()" checked>
+              <input type="radio" class="btn-check" id="btn-sort-name" name="sort" value="name" checked>
               <label class="btn btn-outline-primary" for="btn-sort-name">Name</label>
-              <input type="radio" class="btn-check" id="btn-sort-employees" name="sort" value="employees" onchange="applyFilters()">
+              <input type="radio" class="btn-check" id="btn-sort-employees" name="sort" value="employees">
               <label class="btn btn-outline-primary" for="btn-sort-employees">No. Employees</label>
             </div>
           </fieldset>
           <fieldset class="form-group mt-3">
             <legend class="col-form-label">Order</legend>
             <div class="btn-group" role="group" aria-label="Order">
-              <input type="radio" class="btn-check" id="btn-sort-asc" name="order" value="asc" onchange="applyFilters()" checked>
+              <input type="radio" class="btn-check" id="btn-sort-asc" name="order" value="asc" checked>
               <label class="btn btn-outline-primary" for="btn-sort-asc">Ascending</label>
-              <input type="radio" class="btn-check" id="btn-sort-desc" name="order" value="desc" onchange="applyFilters()">
+              <input type="radio" class="btn-check" id="btn-sort-desc" name="order" value="desc">
               <label class="btn btn-outline-primary" for="btn-sort-desc">Descending</label>
             </div>
           </fieldset>
